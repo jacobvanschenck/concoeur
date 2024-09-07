@@ -1,9 +1,58 @@
-use std::any::{Any, TypeId};
+use std::{
+    any::{Any, TypeId},
+    cell::{Ref, RefMut},
+};
 
 use super::{Component, Entities};
 
 pub type QueryIndexes = Vec<usize>;
 pub type QueryComponents = Vec<Vec<Component>>;
+
+#[derive(Debug)]
+pub struct QueryEntity<'a> {
+    id: usize,
+    entities: &'a Entities,
+}
+
+impl<'a> QueryEntity<'a> {
+    pub fn new(id: usize, entities: &'a Entities) -> Self {
+        QueryEntity { id, entities }
+    }
+
+    pub fn get_component<T: Any>(&self) -> Result<Ref<T>, &'static str> {
+        let type_id = TypeId::of::<T>();
+        let components = self
+            .entities
+            .components
+            .get(&type_id)
+            .ok_or("Component not registered")?;
+        let borrow_component = components[self.id]
+            .as_ref()
+            .ok_or("Component not found")?
+            .borrow();
+
+        Ok(Ref::map(borrow_component, |any| {
+            any.downcast_ref::<T>().unwrap()
+        }))
+    }
+
+    pub fn get_component_mut<T: Any>(&self) -> Result<RefMut<T>, &'static str> {
+        let type_id = TypeId::of::<T>();
+        let components = self
+            .entities
+            .components
+            .get(&type_id)
+            .ok_or("Component not registered")?;
+        let borrow_component = components[self.id]
+            .as_ref()
+            .ok_or("Component not found")?
+            .borrow_mut();
+
+        Ok(RefMut::map(borrow_component, |any| {
+            any.downcast_mut::<T>().unwrap()
+        }))
+    }
+}
 
 #[derive(Debug)]
 pub struct Query<'a> {
@@ -50,15 +99,31 @@ impl<'a> Query<'a> {
         let mut result = vec![];
 
         for type_id in &self.type_ids {
-            let entity_component = self.entities.components.get(type_id).unwrap();
+            let entity_components = self.entities.components.get(type_id).unwrap();
             let mut components_to_keep = vec![];
             for index in &indexes {
-                components_to_keep.push(entity_component[*index].as_ref().unwrap().clone());
+                // components_to_keep.push(entity_components[*index].as_ref().unwrap().clone());
+                components_to_keep.push(entity_components[*index].as_ref().unwrap().clone());
             }
             result.push(components_to_keep);
         }
 
         (indexes, result)
+    }
+
+    pub fn run_query(&self) -> Vec<QueryEntity> {
+        self.entities
+            .map
+            .iter()
+            .enumerate()
+            .filter_map(|(index, entity_map)| {
+                if entity_map & self.map == self.map {
+                    Some(QueryEntity::new(index, self.entities))
+                } else {
+                    None
+                }
+            })
+            .collect()
     }
 }
 
@@ -125,6 +190,63 @@ mod test {
 
         assert_eq!(indexes[0], 0);
         assert_eq!(indexes[1], 3);
+
+        Ok(())
+    }
+
+    #[test]
+    fn run_entity_query_ref() -> Result<(), &'static str> {
+        let mut entities = Entities::default();
+        entities.register_component::<u32>();
+        entities.register_component::<f32>();
+
+        entities.create_entity().with_component(5_u32)?;
+        entities.create_entity().with_component(50.0_f32)?;
+
+        let mut query = Query::new(&entities);
+
+        let query_entities = query.with_component::<u32>()?.run_query();
+
+        assert_eq!(query_entities.len(), 1);
+
+        for entity in query_entities {
+            assert_eq!(entity.id, 0);
+            let health = entity.get_component::<u32>()?;
+            assert_eq!(*health, 5);
+        }
+
+        Ok(())
+    }
+
+    #[test]
+    fn run_entity_query_mut() -> Result<(), &'static str> {
+        let mut entities = Entities::default();
+        entities.register_component::<u32>();
+        entities.register_component::<f32>();
+
+        entities.create_entity().with_component(5_u32)?;
+        entities.create_entity().with_component(50.0_f32)?;
+
+        let mut query = Query::new(&entities);
+
+        let query_entities = query.with_component::<u32>()?.run_query();
+
+        assert_eq!(query_entities.len(), 1);
+
+        for entity in query_entities {
+            assert_eq!(entity.id, 0);
+            let mut health = entity.get_component_mut::<u32>()?;
+            assert_eq!(*health, 5);
+            *health *= 10;
+        }
+
+        let query_entities = query.with_component::<u32>()?.run_query();
+
+        for entity in query_entities {
+            assert_eq!(entity.id, 0);
+            let health = entity.get_component::<u32>()?;
+            assert_eq!(*health, 50);
+        }
 
         Ok(())
     }
