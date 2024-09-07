@@ -27,9 +27,16 @@ impl Position {
         }
     }
 
-    pub fn add_dir(&mut self, dir: Direction) {
+    pub fn add_dir_mut(&mut self, dir: Direction) {
         self.x = Self::add_signed_to_usize(self.x, dir.x);
         self.y = Self::add_signed_to_usize(self.y, dir.y);
+    }
+
+    pub fn add_dir(&mut self, dir: &Direction) -> Self {
+        Position {
+            x: Self::add_signed_to_usize(self.x, dir.x),
+            y: Self::add_signed_to_usize(self.y, dir.y),
+        }
     }
 }
 

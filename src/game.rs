@@ -14,7 +14,6 @@ pub fn start_game() {
 
     let world = new_game();
     draw_world(&world);
-
     println!("Raw mode is on. Press 'q' to exit.");
 
     // Read input one byte at a time
@@ -34,6 +33,7 @@ pub fn start_game() {
         };
         clear_screen();
         draw_world(&world);
+        println!("Raw mode is on. Press 'q' to exit.");
     }
 }
 
@@ -53,6 +53,7 @@ fn new_game() -> World {
         .unwrap_or_else(|err| panic!("new_game, {}", err))
         .with_component(Player::default())
         .unwrap_or_else(|err| panic!("new_game, {}", err));
+
     world
 }
 
@@ -94,5 +95,14 @@ fn move_player(dir: Direction, world: &World) {
         .run_query();
 
     let mut position = query_entities[0].get_component_mut::<Position>().unwrap();
-    position.add_dir(dir);
+
+    let map = world.get_resource::<Map>();
+    if let Some(map) = map {
+        let new_pos = position.add_dir(&dir);
+        if map.tiles[new_pos.x][new_pos.y].is_solid {
+            ()
+        } else {
+            position.add_dir_mut(dir);
+        }
+    }
 }
