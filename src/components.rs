@@ -3,6 +3,7 @@ pub struct Direction {
     pub y: i32,
 }
 
+#[derive(Debug)]
 pub struct Position {
     pub x: usize,
     pub y: usize,
