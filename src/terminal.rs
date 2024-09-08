@@ -50,5 +50,4 @@ pub fn enter_raw_mode() -> impl FnOnce() {
 pub fn clear_screen() {
     let mut stdout = io::stdout();
     write!(stdout, "\x1B[2J\x1B[H").unwrap();
-    stdout.flush().unwrap();
 }

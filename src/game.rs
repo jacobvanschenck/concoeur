@@ -39,7 +39,7 @@ pub fn start_game() {
 
 fn new_game() -> World {
     let mut world = World::new();
-    let mut map = Map::new(40, 70);
+    let mut map = Map::new(40, 140);
     map.generate_map();
     world.add_resource(map);
     world.register_component::<Position>();
@@ -47,7 +47,7 @@ fn new_game() -> World {
     world.register_component::<Player>();
     world
         .create_entity()
-        .with_component(Position { x: 19, y: 34 })
+        .with_component(Position { x: 19, y: 69 })
         .unwrap_or_else(|err| panic!("new_game, {}", err))
         .with_component(Renderable { display: '@' })
         .unwrap_or_else(|err| panic!("new_game, {}", err))
@@ -67,6 +67,7 @@ fn draw_world(world: &World) {
         .run_query();
 
     let map = world.get_resource::<Map>();
+    let mut string = String::from("");
     if let Some(map) = map {
         map.tiles.iter().enumerate().for_each(|(row_index, row)| {
             row.iter().enumerate().for_each(|(tile_index, tile)| {
@@ -75,13 +76,14 @@ fn draw_world(world: &World) {
                     return position.x == row_index && position.y == tile_index;
                 });
                 if let Some(entity) = found_entity {
-                    print!("{} ", entity.get_component::<Renderable>().unwrap().display);
+                    string.push(entity.get_component::<Renderable>().unwrap().display);
                 } else {
-                    print!("{} ", &tile.display);
+                    string.push(tile.display);
                 }
             });
-            println!();
+            string.push('\n');
         });
+        print!("{}", string);
     }
 }
 
