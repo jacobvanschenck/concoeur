@@ -3,10 +3,14 @@ use std::io::{self, Write};
 use std::os::unix::io::AsRawFd;
 
 pub fn enter_raw_mode() -> impl FnOnce() {
+    reset();
+
     // Open stdin for reading
     let stdin = io::stdin().lock();
     // Get the file descriptor for stdin
     let fd = stdin.as_raw_fd();
+
+    hide_cursor();
 
     // Create a termios structure to hold the terminal attributes
     let mut termios = termios {
@@ -48,6 +52,14 @@ pub fn enter_raw_mode() -> impl FnOnce() {
 }
 
 pub fn clear_screen() {
-    let mut stdout = io::stdout();
-    write!(stdout, "\x1B[2J\x1B[H").unwrap();
+    let mut stdout = io::stdout().lock();
+    stdout.write_all(b"\x1B[2J\x1B[H").unwrap();
+}
+
+pub fn reset() {
+    print!("\x1bc");
+}
+
+pub fn hide_cursor() {
+    print!("\x1b\x5b?25l");
 }
