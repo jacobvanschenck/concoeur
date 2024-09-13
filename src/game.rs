@@ -39,7 +39,7 @@ pub fn start_game() {
 
 fn new_game() -> World {
     let mut world = World::new();
-    let mut map = Map::new(40, 140);
+    let mut map = Map::new(21, 80);
     // map.generate_random_map();
     map.generate_bsp_map();
     world.add_resource(map);
